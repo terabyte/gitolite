@@ -208,7 +208,8 @@ way of knowing what <strong>ref</strong> (branch, tag, etc) he is trying to upda
 it is a "write" operation.</p>
 
 <p>For a "read" operation to pass this check, the username (or <code>@all</code>) must have
-read permission (i.e., R, RW, or RW+) on at least one branch of the repo.</p>
+read permission (i.e., R, RW, or RW+) on at least one branch of the repo.
+However, please also see <a href="http://sitaramc.github.com/gitolite/doc/gitolite.conf.html#_restricting_READs_by_refname">restricting reads by refname</a>.</p>
 
 <p>For a "write" operation, there is an additional restriction: lines specifying
 only <code>R</code> (read access) don't count.  <em>The user must have write access to

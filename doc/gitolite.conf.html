@@ -34,6 +34,7 @@
 <ul>
 <li><a href="#_IMPORTANT_NOTES_ABOUT_DENY_RULES_"><strong><em>IMPORTANT NOTES ABOUT "DENY" RULES</em></strong>:</a></li>
 </ul></li>
+<li><a href="#_restricting_READs_by_refname">restricting READs by refname</a></li>
 </ul></li>
 <li><a href="#_summary_permissions">summary: permissions</a></li>
 <li><a href="#_virtual_ref_types">virtual "ref"-types</a></li>
@@ -392,12 +393,70 @@ fails</li>
 <h5><strong><em>IMPORTANT NOTES ABOUT "DENY" RULES</em></strong>:</h5>
 
 <ul>
-<li><p>deny rules do NOT affect read access.  They only apply to write access.</p></li>
+<li><p>normally, deny rules do NOT affect read access.  They only apply to write access.
+However, please also see the next section, <a href="http://sitaramc.github.com/gitolite/doc/gitolite.conf.html#_restricting_READs_by_refname">restricting reads by refname</a>.</p></li>
 <li><p>when using deny rules, the order of your rules starts to matter, where
 earlier it did not.  If you're just starting to add a deny rule to an
 existing ruleset, it's a good idea to review the entire ruleset once, to
 make sure you're doing it right.</p></li>
 </ul>
+
+<p><a name="_restricting_READs_by_refname"></a></p>
+
+<h4>restricting READs by refname</h4>
+
+<p><strong>IMPORTANT: UNTIL THIS NOTICE IS REMOVED, THIS FEATURE IS ONLY AVAILABLE IN
+THE "rrr" BRANCH</strong>.</p>
+
+<p>Git by itself does not enable restricting <em>read</em> access by branch/tag-name.
+Until now, anyone who wanted that was told to either (a) use separate repos
+for the private and public branches, with pulls going strictly one way, or (b)
+use <a href="http://sitaramc.github.com/gitolite/contrib/gerrit.html">Gerrit Code Review</a>, which can do it because it uses jgit, a Java
+implementation of git which has been tweaked to allow this.  There are some
+complications in how it does it; see that link for more.</p>
+
+<p>However, now we've managed to do that to.  And without having to hack git!
+The idea came to me while working on <a href="http://sitaramc.github.com/gitolite/contrib/adc/hub.html">something else</a> for the KDE folks,
+so you can thank them for the inspiration.</p>
+
+<p><em>For all that, it's still a hack.  And it only works with ssh access -- don't
+expect it to ever work with git-daemon or gitweb access, and even getting it
+to play nice with smart http may never happen.</em></p>
+
+<p>Here's how you can use this, if you're really desperate.  Let's say you have
+the following rules for repo <code>foo</code>:</p>
+
+<pre><code>repo foo
+    R           =   u1      # line 1
+    RW          =   u2      # line 2
+    R   b1      =   u3      # line 3
+    RW  b2      =   u4      # line 4
+    RW+ temp    =   u1 u2 u3 u4
+</code></pre>
+
+<p>Gitolite before this version would give all four users the same read access to
+the repository.  After all, they have each been named in some "R" or "RW" line
+somewhere in that repo.  This in turn means that line 3 should actually be
+just <code>R = u3</code>, because the <code>b1</code> has no effect</p>
+
+<p>In fact, line 3 may even be the result of a misunderstanding (such as <a href="http://colabti.org/irclogger/irclogger_log/git?date=2011-02-23#l2261">this
+one</a>).  So we now let that misunderstood syntax get some DWIM magic.</p>
+
+<p>Here's the rule, starting from this revision:</p>
+
+<blockquote>
+  <p><strong>When a user has an <code>R</code> combined with an explicit refex in a set of
+  rules, that user is subject to read-restrictions on that repo.</strong></p>
+</blockquote>
+
+<p>As you can see in the example above, line 3 is the only one that fits that
+criterion, so user <code>u3</code> is subject to read access checks.  In this example, he
+cannot fetch any branch except <code>b1</code> and <code>temp</code>.</p>
+
+<p>Implementation notes: we create a temporary repo from which we delete all refs
+that the user does not have read permission for, then quietly redirect the
+access to that temporary repo.  (I already told you it's a hack!).  This does
+not seem to be easy/possible in smart http mode, sadly.  Patches welcome!</p>
 
 <p><a name="_summary_permissions"></a></p>
 
@@ -415,7 +474,7 @@ found in doc/wildcard-repositories.mkd.]</p>
 
 <h3>virtual "ref"-types</h3>
 
-<p>This is a highly advanced topic; see [doc/virtualrefs-and-scoring.mkd][vs] for
+<p>This is a highly advanced topic; see <a href="http://sitaramc.github.com/gitolite/doc/virtualrefs-and-scoring.html">doc/virtualrefs-and-scoring.mkd</a> for
 details.</p>
 
 <p><a name="_other_tips"></a></p>

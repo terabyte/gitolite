@@ -92,13 +92,13 @@ change on top of a SHA that they know but don't actually have.  (You'll
 have to think about this carefully; it may not be immediately obvious to
 people who do not know the ref-exchange in the git protocol).</p>
 
-<p>Gitolite is dependent on git itself to provide that -- it just cannot be
-done without support from git core.  I can see some corporates drooling at
-this possibility (makes no sense for open source projects IMO) ;-)</p>
-
 <p>My normal recommendation is to <strong>use separate repos</strong> if you really need
 this while continuing to use gitolite.  Much simpler and easier to audit
-and to convince auditors that "those people can't see that code".</p></li>
+and to convince auditors that "those people can't see that code".</p>
+
+<p>However, if you're prepared to use ssh access only (and not smart http,
+and definitely not git-daemon or gitweb), then you should take a look at
+<a href="http://sitaramc.github.com/gitolite/doc/gitolite.conf.html#_restricting_READs_by_refname">restricting reads by refname</a> for more.</p></li>
 </ul>
 
 <p><strong>Categories</strong>:</p>

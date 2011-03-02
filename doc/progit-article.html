@@ -122,7 +122,7 @@ repo testing
 
 <p>At this point you might be wondering how the access control rules are actually applied, so let's go over that briefly.</p>
 
-<p>There are two levels of access control in gitolite.  The first is at the repository level; if you have read (or write) access to <em>any</em> ref in the repository, then you have read (or write) access to the repository.</p>
+<p>There are two levels of access control in gitolite.  The first is at the repository level; if you have read (or write) access to <em>any</em> ref in the repository, then you have read (or write) access to the repository.  Usually -- see <a href="http://sitaramc.github.com/gitolite/doc/gitolite.conf.html#_restricting_READs_by_refname">restricting reads by refname</a> for more.</p>
 
 <p>The second level, applicable only to "write" access, is by branch or tag within a repository.  The username, the access being attempted (<code>W</code> or <code>+</code>), and the refname being updated are known.  The access rules are checked in order of appearance in the config file, looking for a match for this combination (but remember that the refname is regex-matched, not merely string-matched).  If a match is found, the push succeeds.  A fallthrough results in access being denied.</p>
 
