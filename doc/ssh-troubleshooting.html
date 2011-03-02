@@ -1,0 +1,523 @@
+<p><head><style>
+    body        { margin-left:  40px;   font-size:  0.9em;  font-family: sans-serif; max-width: 800px; }
+    h1          { margin-left: -30px;   border-bottom: 5px  solid #ccc; }
+    h2, h3      { margin-left: -30px;   border-top:    3px  solid #ddd; }
+    h4, h5      { margin-left: -20px; }
+    code        { font-size:    1.1em;  background:  #eee; }
+    pre         { margin-left:  2em;    background:  #eee; }
+    pre code    { font-size:    1.1em;  background:  #eee; }
+</style></head></p>
+
+<h1>ssh troubleshooting</h1>
+
+<p>In this document:</p>
+
+<ul>
+<li><a href="#_common_ssh_asks_for_a_password">(common) ssh asks for a password</a></li>
+<li><a href="#_problems_when_using_package_root_or_non_root_install_methods">problems when using package, root, or non-root install methods</a></li>
+<li><a href="#_problems_when_using_the_from_client_install_method">problems when using the "from-client" install method</a>
+<ul>
+<li><a href="#_sidebar_why_two_keys_on_client_for_the_admin">(sidebar) why two keys on client for the admin</a></li>
+<li><a href="#_bypassing_gitolite_without_intending_to">bypassing gitolite without intending to</a></li>
+<li><a href="#_basic_ssh_troubleshooting_for_the_admin">basic ssh troubleshooting for the admin</a></li>
+</ul></li>
+<li><a href="#_problems_with_using_non_openssh_public_keys">problems with using non-openssh public keys</a></li>
+<li><a href="#_windows_issues">windows issues</a></li>
+<li><a href="#_details">details</a>
+<ul>
+<li><a href="#_files_on_the_server">files on the server</a></li>
+<li><a href="#_files_on_client">files on client</a></li>
+</ul></li>
+<li><a href="#_some_other_tips_and_tricks">some other tips and tricks</a>
+<ul>
+<li><a href="#_giving_shell_access_to_gitolite_users">giving shell access to gitolite users</a></li>
+<li><a href="#_losing_your_admin_key">losing your admin key</a></li>
+<li><a href="#_simulating_ssh_copy_id">simulating ssh-copy-id</a></li>
+</ul></li>
+</ul>
+
+<hr />
+
+<hr />
+
+<p>This document should help you troubleshoot ssh-related problems in installing
+and accessing gitolite.</p>
+
+<p><strong>This is about all the help I can give you in terms of the ssh aspect of
+using gitolite.  If you're installing gitolite, you're a "system admin", like
+it or not.  Ssh is therefore a necessary skill.  Please take the time to learn
+at least enough to get passwordless access working.</strong></p>
+
+<p><strong>I have spent more than my share of time helping people debug their
+misconfigured servers, simply because they tried to blame gitolite for their
+troubles.  This stops now.  I'd rather spend time on actual gitolite features,
+code, and documentation.</strong></p>
+
+<p>Other resources:</p>
+
+<ul>
+<li><p>people who think this is too hard should take a look at this
+<a href="http://sitaramc.github.com/gitolite/doc/install-transcript.html">transcript</a> to <strong>see how simple it <em>actually</em> is</strong>.  This transcript
+uses the 'from-client' method of install.</p></li>
+<li><p>someone also wrote a tutorial, see <a href="http://sites.google.com/site/senawario/home/gitolite-tutorial">here</a>.  This uses the 'non-root'
+method of install, to provide a different perspective.</p></li>
+<li><p>I <strong>strongly</strong> recommend reading <a href="http://sitaramc.github.com/gitolite/doc/gitolite-and-ssh.html">doc/gitolite-and-ssh.mkd</a>,
+which is a very detailed look at how gitolite uses ssh's features on the
+server side.  Most people don't know ssh as well as they <em>think</em> they do;
+even if you don't have any problems right now, it's worth skimming over.</p></li>
+<li><p>there's a program called <code>sshkeys-lint</code> that you can run on your client to
+figure out which key is doing what.  Run it without arguments to get help
+on how to run it and what inputs it needs.</p></li>
+</ul>
+
+<hr />
+
+<p><a name="_common_ssh_asks_for_a_password"></a></p>
+
+<h3>(common) ssh asks for a password</h3>
+
+<p><strong>NOTE</strong>: This section should be useful to anyone trying to get password-less
+access working.  It is <strong>not</strong> specific to gitolite.</p>
+
+<p>You have generated a keypair on your workstation (<code>ssh-keygen</code>) and copied the
+public part of it (<code>~/.ssh/id_rsa.pub</code>, by default) to the server.</p>
+
+<p>On the server you have appended this file to <code>~/.ssh/authorized_keys</code>.  Or you
+ran something, like the <code>gl-setup</code> or <code>gl-easy-install</code> steps during a
+gitolite install, which should have done that for you.</p>
+
+<p>You now expect to log in without having to type in a password, but when you
+try, you are being asked for a password.</p>
+
+<p>This is a quick checklist:</p>
+
+<ul>
+<li><p>make sure you're being asked for a password and not a pass<em>phrase</em>.  Do
+not confuse or mistake a prompt saying <code>Enter passphrase for key
+'/home/sitaram/.ssh/id_rsa':</code> for a password prompt from the remote
+server!</p>
+
+<p>When you create an ssh keypair using <code>ssh-keygen</code>, you have the option of
+protecting it with a passphrase.  When you subsequently use that keypair
+to access a remote host, your <em>local</em> ssh client needs to unlock the
+corresponding private key, and ssh will probably ask for the passphrase
+you set when you created the keypair.</p>
+
+<p>You have two choices to avoid this prompt every time you try to use the
+private key.  The first is to create keypairs <em>without</em> a passphrase (just
+hit enter when prompted for one).  <strong>Be sure to add a passphrase later,
+once everything is working, using <code>ssh-keygen -p</code></strong>.</p>
+
+<p>The second is to use <code>ssh-agent</code> (or <code>keychain</code>, which in turn uses
+<code>ssh-agent</code>) or something like that to manage your keys.  Other than
+discussing one more potential trouble-spot with ssh-agent (see below),
+further discussion of ssh-agent/keychain is out of scope of this document.</p></li>
+<li><p>make sure the right private key is being offered.  Run ssh in very
+verbose mode and look for the word "Offering", like so:</p>
+
+<pre><code>ssh -vvvv user@host pwd 2&gt; &gt;(grep -i offer)
+</code></pre>
+
+<p>If some keys <em>are</em> being offered, but not the key that was supposed to be
+used, you may be using ssh-agent; see next bullet.</p>
+
+<p>If you don't see any offers being made at all, then you probably don't
+have any protocol 2 keys in your <code>~/.ssh</code> (names are <code>id_rsa</code> or <code>id_dsa</code>,
+with corresponding <code>.pub</code> files).</p></li>
+<li><p>If <code>ssh-add -l</code> responds with either "The agent has no identities." or
+"Could not open a connection to your authentication agent.", then you can
+skip this bullet.</p>
+
+<p>However, if <code>ssh-add -l</code> lists <em>any</em> keys at all, then something weird
+happens.  Due to a quirk in ssh-agent, ssh will now <em>only</em> use one of
+those keys, <em>even if you explicitly ask</em> for some other key to be used.</p>
+
+<p>In that case, add the key you want using <code>ssh-add ~/.ssh/mykey</code> and try
+the access again.</p></li>
+<li><p>ssh is very sensitive to permissions.  An extremely conservative setup is
+given below, but be sure to do this on <strong>both the client and the server</strong>:</p>
+
+<pre><code>cd $HOME
+chmod go-rwx .
+chmod -R go-rwx .ssh
+</code></pre></li>
+<li><p>actually, every component of the path to <code>~/.ssh/authorized_keys</code> all the
+way upto the root directory must be at least <code>chmod go-w</code>.  So be sure to
+check <code>/</code> and <code>/home</code> also.</p></li>
+<li><p>while you're doing this, make sure the owner and group info for each of
+these components are correct.  <code>ls -ald ~ ~/.ssh ~/.ssh/authorized_keys</code>
+will tell you what they are.</p></li>
+<li><p>if all that fails, log onto the server as root, <code>cd /var/log</code>, and look
+for a file called <code>auth.log</code> or <code>secure</code> or some such name.  Look inside
+this file for messages matching the approximate time of your last attempt
+to login, to see if they tell you what is the problem.</p></li>
+</ul>
+
+<hr />
+
+<p><a name="_problems_when_using_package_root_or_non_root_install_methods"></a></p>
+
+<h3>problems when using package, root, or non-root install methods</h3>
+
+<p>This section applies if you installed using any of the <a href="http://sitaramc.github.com/gitolite/doc/1-INSTALL.html#methods">first 3 methods</a>
+of install.</p>
+
+<p>In these 3 modes, installation is done on the server, by logging in as some
+other user and doing and <code>su - git</code>.  The admin's workstation has only one key
+that is known to the server's authkeys file, and this key invokes gitolite.
+<strong>Note</strong> that this key is not supposed to get you a shell; it is supposed to
+invoke gitolite.</p>
+
+<p>As a result, it's a lot easier to debug.  Just run <code>ssh git@server info</code>.  If
+this get you the <a href="http://sitaramc.github.com/gitolite/doc/report-output.html">gitolite version and access info</a>, everything is
+fine.  If it asks you for a password, see the very first section of this
+document for help.</p>
+
+<p>If it gets you the GNU info command output, you have shell access.  This
+probably means you had passwordless shell access to the server <em>before</em> you
+were added as a gitolite user, and you sent that same key to your gitolite
+admin to include in the admin repo.  This won't work -- the same key appears
+twice in the authkeys file now, and since the ssh server will always use the
+first match, the second occurrence (which invokes gitolite) is ignored.</p>
+
+<p>You'll have to (create and) use a different keypair for gitolite access.</p>
+
+<p><a name="_problems_when_using_the_from_client_install_method"></a></p>
+
+<h3>problems when using the "from-client" install method</h3>
+
+<p>This section applies if you installed using the <a href="http://sitaramc.github.com/gitolite/doc/1-INSTALL.html#fc">from-client method</a>.</p>
+
+<p>This method of install is unique in that the admin will have 2 distinct keys
+to access the server.  The default key (<code>~/.ssh/id_rsa</code>) is used to get a
+shell prompt and to run commands; for example, <code>gl-easy-install</code> uses this key
+to do all its server-side work.</p>
+
+<p>In addition, there is a named key created just to invoke gitolite instead of
+starting a shell.  The name is whatever you gave as the third argument to the
+<code>gl-easy-install</code> command (for example, <code>~/.ssh/sitaram.pub</code> in my case).</p>
+
+<p>Finally, a <code>host gitolite</code> para is added to <code>~/.ssh/config</code>:</p>
+
+<pre><code>host gitolite
+     user git
+     hostname server
+     identityfile ~/.ssh/sitaram
+</code></pre>
+
+<p>so that you can use <code>gitolite:reponame</code> as the URL to make ssh use the named
+key.</p>
+
+<p>All this applies <em>only</em> to the admin.  Normal users will only have one key and
+do not need any of this.</p>
+
+<p><a name="twokeys"></a></p>
+
+<p><a name="_sidebar_why_two_keys_on_client_for_the_admin"></a></p>
+
+<h4>(sidebar) why two keys on client for the admin</h4>
+
+<blockquote>
+  <p>There are two types of access the admin will make to the server: a normal
+  login, to get a shell prompt, and gitolite access (clone/fetch/push etc).
+  The first access needs an authkeys line <em>without</em> any "command="
+  restrictions, while the second requires a line <em>with</em> such a restriction.</p>
+
+<p>And we can't use the same key for both because there is no way to
+  disambiguate them; the ssh server will always (<em>always</em>) pick the first
+  one in sequence when the key is offered by the ssh client.</p>
+
+<p>So the next question is usually "I have other ways to get a shell on that
+  account (like <code>su - git</code> from some other account), so why do I need a key
+  for shell access at all?"</p>
+
+<p>The answer to this is that the "easy install" script, being written for
+  the most general case, needs shell access via ssh to do its stuff.  If you
+  have access otherwise, you really should use one of the other 3 install
+  methods to install gitolite.  Please see the <a href="http://sitaramc.github.com/gitolite/doc/1-INSTALL.html">install doc</a> for
+  details.</p>
+</blockquote>
+
+<p><a name="_bypassing_gitolite_without_intending_to"></a></p>
+
+<h4>bypassing gitolite without intending to</h4>
+
+<p>These problems happen to the person who has <strong>utterly failed</strong> to read/heed
+the message that shows up at the end of running the <code>gl-easy-install</code> command.
+Both these problems are caused by using the wrong key, thus <strong>bypassing
+gitolite completely</strong>:</p>
+
+<ul>
+<li><p>you get <code>fatal: 'reponame' does not appear to be a git repository</code>, and
+yet you are sure 'reponame' exists, you haven't mis-spelled it, etc.</p></li>
+<li><p>you are able to clone repositories but are unable to push changes back
+(the error complains about the <code>GL_RC</code> environment variable not being set,
+and the <code>hooks/update</code> failing in some way).</p></li>
+</ul>
+
+<p>Let us recap the message that appears on a successful run of the "easy-install"
+program; it looks something like this (with suitable values substituted for
+<code>&lt;user&gt;</code>, <code>&lt;server&gt;</code>, and <code>&lt;port&gt;</code>):</p>
+
+<pre><code>IMPORTANT NOTE -- PLEASE READ!!!
+    *Your* URL for cloning any repo on this server will be
+        gitolite:reponame.git
+
+    *Other* users you set up will have to use
+        &lt;user&gt;@&lt;server&gt;:reponame.git
+    However, if your server uses a non-standard ssh port, they should use
+        ssh://&lt;user&gt;@&lt;server&gt;:&lt;port&gt;/reponame.git
+
+    If this is your first time installing gitolite, please also:
+        tail -31 src/gl-easy-install
+    for next steps.
+</code></pre>
+
+<p>The first error above happens if you use <code>git@server:reponame</code> instead of
+<code>gitolite:reponame</code>.  All your repos are actually in a subdirectory pointed to
+by <code>$REPO_BASE</code> in the rc file (default: <code>repositories</code>).  Gitolite internally
+prefixes this before calling the actual git command you invoked, but since
+you're bypassing gitolite completely, this prefixing does not happen, and so
+the repo is not found.</p>
+
+<p>The second error happens if you use <code>git@server:repositories/reponame.git</code>
+(assuming default <code>$REPO_BASE</code> setting)  -- that is, you used the full unix
+path.  Since the "prefixing" mentioned above is not required, the shell finds
+the repo and clones ok.  But when you push, gitolite's <strong>update hook</strong> kicks
+in, and fails to run because some of the environment variables it is
+expecting are not present.</p>
+
+<p><a name="_basic_ssh_troubleshooting_for_the_admin"></a></p>
+
+<h4>basic ssh troubleshooting for the admin</h4>
+
+<p>Otherwise, run these checks:</p>
+
+<ol>
+<li><p><code>ssh git@server</code> should get you a command line <em>without</em> asking for a
+password.</p>
+
+<p>If it asks you for a password, then your <code>id_rsa</code> keypair changed after
+you ran the easy install, or someone fiddled with the
+<code>~/.ssh/authorized_keys</code> file on the server.</p>
+
+<p>If it prints the gitolite version and access info (see
+<a href="http://sitaramc.github.com/gitolite/doc/report-output.html">doc/report-output.mkd</a>), you managed to overwrite the <code>id_rsa</code>
+keypair with the <code>sitaram</code> keypair, or something equally weird.  This is
+because a gitolite key, when used without any actual command, defaults to
+running gitolite's internal "info" command.</p>
+
+<p><strong>NOTE</strong> starting with <a href="http://www.openssh.org/txt/release-5.6">version 5.6</a>, openssh will "Kill
+channel when pty allocation requests fail".  This means that, instead of
+seeing the version and access info as described above, you may only get a
+message about pty allocation failure, followed by "connection closed".</p></li>
+<li><p><code>ssh gitolite info</code> should print some gitolite version and access info.
+If you get the output of the GNU info command instead, you probably reused
+your <code>id_rsa</code> keypair as your <code>sitaram</code> keypair, or overwrote the
+<code>sitaram</code> keypair with the <code>id_rsa</code> keypair.</p></li>
+</ol>
+
+<p>There are many ways to fix this, depending on where and what the damage is.
+The most generic way (and therefore time-taking) is to re-install gitolite
+from scratch:</p>
+
+<ul>
+<li>make a backup of your gitolite-admin repo clone somewhere (basically your
+<code>keydir/*.pub</code> and your <code>conf/gitolite.conf</code>).  If necessary get these
+files from the server's <code>~/.gitolite</code> directory.</li>
+<li>log on to the server somehow (using some other account, using a password,
+su-ing in, etc) and delete <code>~/.ssh/authorized_keys</code>.  Rename or move aside
+<code>~/.gitolite</code> so that also looks like it is missing.</li>
+<li>back on your workstation, make sure you have 2 keypairs (<code>id_rsa</code> and
+<code>sitaram</code>, along with corresponding <code>.pub</code> files).  Create them if needed.
+Also make sure they are <em>different</em> and not a copy of each other :-)</li>
+<li>install gitolite normally:
+<ul>
+<li>run <code>ssh-copy-id -i ~/.ssh/id_rsa.pub git@server</code> to get passwordless
+access to the server.  (Mac users may have to do this step manually)</li>
+<li>make sure <code>ssh git@server pwd</code> prints the <code>$HOME</code> of <code>git@server</code>
+<strong>without</strong> asking for a password.  Do not proceed till this works.</li>
+<li>run easy install again, (in my case: <code>cd gitolite-source;
+src/gl-easy-install -q git server sitaram</code>)</li>
+</ul></li>
+<li>go to your gitolite-admin repo clone, and copy <code>conf/gitolite.conf</code> and
+<code>keydir/*.pub</code> from your backup to this directory</li>
+<li>copy (be sure to overwrite!) <code>~/.ssh/sitaram.pub</code> also to keydir</li>
+<li>now <code>git add keydir; git commit; git push -f</code></li>
+</ul>
+
+<p>That's a long sequence but it should work.</p>
+
+<p><a name="_problems_with_using_non_openssh_public_keys"></a></p>
+
+<h3>problems with using non-openssh public keys</h3>
+
+<p>Gitolite accepts public keys only in openssh format.  Trying to use an "ssh2"
+key (used by proprietary SSH software) results in:</p>
+
+<pre><code>WARNING: a pubkey file can only have one line (key); ignoring YourName.pub
+</code></pre>
+
+<p>To convert ssh2-compatible keys to openssh run:</p>
+
+<pre><code>ssh-keygen -i -f /tmp/ssh2/YourName.pub &gt; /tmp/openssh/YourName.pub
+</code></pre>
+
+<p>then use the resulting pubkey as you normally would in gitolite.</p>
+
+<p><a name="_windows_issues"></a></p>
+
+<h3>windows issues</h3>
+
+<p>On windows, I have only used msysgit, and the openssh that comes with it.
+Over time, I have grown to distrust putty/plink due to the number of people
+who seem to have trouble when those beasts are involved (I myself have never
+used them for any kind of git access).  If you have unusual ssh problems that
+just don't seem to have any explanation, try removing all traces of
+putty/plink, including environment variables, etc., and then try again.</p>
+
+<p>If you can offer an <em>authoritative</em> account of the complications involved, and
+how to resolve them and get things working, I'd be happy to credit you and
+include it, either directly here if it is short enough or just an external
+link, or in contrib/ if it's a longer piece of text.</p>
+
+<p><a name="_details"></a></p>
+
+<h3>details</h3>
+
+<p>Here's how it all hangs together.</p>
+
+<p><a name="_files_on_the_server"></a></p>
+
+<h4>files on the server</h4>
+
+<ul>
+<li><p>the authkeys file; this contains one line containing the pubkey of each
+user who is permitted to login without a password.</p>
+
+<p>Pubkey lines that give shell access look like this:</p>
+
+<pre><code>ssh-rsa AAAAB3NzaC[snip]uPjrUiAUew== /home/sitaram/.ssh/id_rsa
+</code></pre>
+
+<p>On a typical server there will be only one or two of these lines.</p>
+
+<p>Note that the last bit (<code>/home/sitaram/.ssh/id_rsa</code>) is purely a <em>comment</em>
+field and can be anything.  Also, the actual lines are much longer, about
+400 characters; I snipped 'em in the middle, as you can see.</p>
+
+<p>In contrast, pubkey lines that give access to git repos hosted by gitolite
+look like this:</p>
+
+<pre><code>command="[some path]src/gl-auth-command sitaram",[some restrictions] ssh-rsa AAAAB3NzaC[snip]s18OnB42oQ== sitaram@sita-lt
+</code></pre>
+
+<p>You will have many more of these lines -- one for every pubkey file in
+<code>keydir/</code> of your gitolite-admin repo, with the corresponding username in
+place of "sitaram" in the example above.</p>
+
+<p>The "command=" at the beginning ensures that when someone with the
+corresponding private key logs in, they don't get a shell.  Instead, the
+<code>gl-auth-command</code> program is run, and (in this example) is given the
+argument <code>sitaram</code>.  This is how gitolite is invoked, (and is told the
+user logging in is "sitaram").</p></li>
+</ul>
+
+<p><a name="_files_on_client"></a></p>
+
+<h4>files on client</h4>
+
+<ul>
+<li><p>default keypair; used to get shell access to servers.  You would have
+copied this pubkey to the gitolite server in order to log in without a
+password.  (On Linux systems you may have used <code>ssh-copy-id</code> to do that).
+You would have done this <em>before</em> you ran the easy install script, because
+otherwise easy install won't run!</p>
+
+<pre><code>~/.ssh/id_rsa
+~/.ssh/id_rsa.pub
+</code></pre></li>
+<li><p>gitolite keypair; the "sitaram" in this is the 3rd argument to the
+<code>src/gl-easy-install</code> command you ran; the easy install script does the
+rest</p>
+
+<pre><code>~/.ssh/sitaram
+~/.ssh/sitaram.pub
+</code></pre></li>
+<li><p>config file; this file has an entry for gitolite access if you install
+usine the "from-client" method.  (See above for example "host gitolite"
+para in the ssh config file).</p>
+
+<p>This is needed because this is the only way to force git to use a
+non-default keypair (unlike command line ssh, which can be given the <code>-i
+~/.ssh/sitaram</code> flag to do so).</p></li>
+</ul>
+
+<p><a name="_some_other_tips_and_tricks"></a></p>
+
+<h3>some other tips and tricks</h3>
+
+<p><a name="_giving_shell_access_to_gitolite_users"></a></p>
+
+<h4>giving shell access to gitolite users</h4>
+
+<p>We've managed (thanks to an idea from Jesse Keating) to make it possible for a
+single key to allow both gitolite access <em>and</em> shell access.</p>
+
+<p>This is done by copying the pubkey (to which you want to give shell access) to
+the server and running either</p>
+
+<pre><code>cd $HOME/.gitolite  # assuming default $GL_ADMINDIR in ~/.gitolite.rc
+src/gl-tool shell-add ~/foo.pub
+</code></pre>
+
+<p>or</p>
+
+<pre><code>gl-tool shell-add ~/foo.pub
+</code></pre>
+
+<p>The first method is applicable if you installed using the <strong>from-client</strong>
+method, while the second method is for any of the other three (see
+doc/1-INSTALL.mkd, section on "install methods", for more on this)</p>
+
+<p><strong>IMPORTANT UPGRADE NOTE</strong>: previous implementations of this feature were
+crap.  There was no easy/elegant way to ensure that someone who had repo admin
+access would not manage to get himself shell access.</p>
+
+<p>Giving someone shell access requires that you should have shell access in the
+first place, so the simplest way is to enable it from the server side only.</p>
+
+<p><a name="_losing_your_admin_key"></a></p>
+
+<h4>losing your admin key</h4>
+
+<p>If you lost the admin key, and need to re-establish ownership of the
+gitolite-admin repository with a fresh key, take a look at the
+<code>src/gl-dont-panic</code> program.  You will need shell access to the server of
+course.  Run it without arguments to get instructions.</p>
+
+<p><a name="_simulating_ssh_copy_id"></a></p>
+
+<h4>simulating ssh-copy-id</h4>
+
+<p>don't have <code>ssh-copy-id</code>?  This is broadly what that command does, if you want
+to replicate it manually.  The input is your pubkey, typically
+<code>~/.ssh/id_rsa.pub</code> from your client/workstation.</p>
+
+<ul>
+<li><p>it copies it to the server as some file</p></li>
+<li><p>it appends that file to <code>~/.ssh/authorized_keys</code> on the server
+(creating it if it doesn't already exist)</p></li>
+<li><p>it then makes sure that all these files/directories have go-w perms
+set (assuming user is "git"):</p>
+
+<pre><code>/home/git/.ssh/authorized_keys
+/home/git/.ssh
+/home/git
+</code></pre></li>
+</ul>
+
+<p>[Actually, <code>sshd</code> requires that even directories <em>above</em> <code>~</code> (<code>/</code>, <code>/home</code>,
+typically) also must be <code>go-w</code>, but that needs root.  And typically
+they're already set that way anyway.  (Or if they're not, you've got
+bigger problems than gitolite install not working!)]</p>

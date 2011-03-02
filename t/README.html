@@ -1,0 +1,112 @@
+<p><head><style>
+    body        { margin-left:  40px;   font-size:  0.9em;  font-family: sans-serif; max-width: 800px; }
+    h1          { margin-left: -30px;   border-bottom: 5px  solid #ccc; }
+    h2, h3      { margin-left: -30px;   border-top:    3px  solid #ddd; }
+    h4, h5      { margin-left: -20px; }
+    code        { font-size:    1.1em;  background:  #eee; }
+    pre         { margin-left:  2em;    background:  #eee; }
+    pre code    { font-size:    1.1em;  background:  #eee; }
+</style></head></p>
+
+<h2>notes on the testing setup</h2>
+
+<p>In this document:</p>
+
+<ul>
+<li><a href="#_terminology">terminology</a></li>
+<li><a href="#_notes_and_background">notes and background</a></li>
+<li><a href="#_quick_instructions_for_running_the_test_suite">quick instructions for running the test suite</a></li>
+<li><a href="#_instructions_for_adding_new_tests">instructions for adding new tests</a></li>
+</ul>
+
+<p><a name="terminology"></a></p>
+
+<p><a name="_terminology"></a></p>
+
+<h3>terminology</h3>
+
+<pre><code>#define PW "patches welcome!"
+#define TODO PW
+</code></pre>
+
+<p><a name="notes_and_background"></a></p>
+
+<p><a name="_notes_and_background"></a></p>
+
+<h3>notes and background</h3>
+
+<ul>
+<li><p>all testing is done on one machine, using 2 userids</p></li>
+<li><p>test driver exits on the <em>first</em> failed test; no fancy counting here.
+(PW).</p></li>
+<li><p>installs are done using "gl-easy-install".  As such, this test suite is
+mainly meant for testing <strong>the core (access control) functionality</strong>, and
+will not help you test the install/upgrade parts themselves.  Those are a
+lot more difficult to test in an automated fashion, but luckily they also
+change infrequently and can easily be tested manually when they do.
+Errors in those are much more visible too.  (PW).</p></li>
+<li><p>the test driver has evolved as new scripts were added; you will see that
+older scripts are a little less sophisticated.</p></li>
+</ul>
+
+<p><a name="quick_instructions_for_running_the_test_suite"></a></p>
+
+<p><a name="_quick_instructions_for_running_the_test_suite"></a></p>
+
+<h3>quick instructions for running the test suite</h3>
+
+<ul>
+<li><p>create two brand new user IDs: tester and gitolite-test</p>
+
+<ul>
+<li>these are hard-coded, sorry.  (PW)</li>
+<li>give them some passwords</li>
+<li>allow ssh into gitolite-test in <code>/etc/ssh/sshd_config</code>; preferably use
+a line like <code>AllowUsers gitolite-test@127.0.0.1</code> so that no one can
+ssh in from outside</li>
+</ul></li>
+<li><p>prepare/push a bare clone of gitolite itself on /tmp so that the "tester"
+userid can grab it painlessly</p>
+
+<pre><code>cd your-gitolite-working-repo
+git clone --bare $PWD /tmp/gitolite                 # first time
+git push -f --all /tmp/gitolite                     # subsequent times
+</code></pre></li>
+<li><p>"su" to "tester" and clone/fetch the gitolite source:</p>
+
+<pre><code>cd $HOME; git clone /tmp/gitolite                   # first time
+cd gitolite; git fetch origin                       # subsequent times
+</code></pre></li>
+<li><p>checkout and "install" the branch you want to test (install from "tester"
+userid to "gitolite-test" userid).  Example, if you want to test "pu"
+branch:</p>
+
+<pre><code>git checkout -t origin/pu                           # if needed
+git checkout -f pu; git reset --hard origin/pu      # subsequent times
+cd t        # THIS IS IMPORTANT (patches welcome, or will be fixed eventually!)
+./install-gitolite
+</code></pre></li>
+<li><p>run all or some of the tests</p>
+
+<pre><code>./test-driver.sh
+# or
+./test-driver.sh t51
+</code></pre></li>
+<li><p>you can also run them through "prove", although to make it work easier
+with prove, I ended up making the "subtest" numbers be the actual test
+numbers, making it look like I have over 2000 tests, when in reality I
+have about 600:</p>
+
+<pre><code>prove ./test-driver.sh
+# or
+prove ./test-driver.sh :: t51
+</code></pre></li>
+</ul>
+
+<p><a name="instructions_for_adding_new_tests"></a></p>
+
+<p><a name="_instructions_for_adding_new_tests"></a></p>
+
+<h3>instructions for adding new tests</h3>
+
+<p>(TODO)</p>

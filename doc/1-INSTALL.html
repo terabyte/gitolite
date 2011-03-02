@@ -1,0 +1,459 @@
+<p><head><style>
+    body        { margin-left:  40px;   font-size:  0.9em;  font-family: sans-serif; max-width: 800px; }
+    h1          { margin-left: -30px;   border-bottom: 5px  solid #ccc; }
+    h2, h3      { margin-left: -30px;   border-top:    3px  solid #ddd; }
+    h4, h5      { margin-left: -20px; }
+    code        { font-size:    1.1em;  background:  #eee; }
+    pre         { margin-left:  2em;    background:  #eee; }
+    pre code    { font-size:    1.1em;  background:  #eee; }
+</style></head></p>
+
+<h1>gitolite installatation</h1>
+
+<p>In this document:</p>
+
+<ul>
+<li><a href="#_please_read_this_first">please read this first</a>
+<ul>
+<li><a href="#_important_notes">important notes</a></li>
+<li><a href="#_requirements">requirements</a>
+<ul>
+<li><a href="#_client_workstation">client/workstation</a></li>
+<li><a href="#_server">server</a></li>
+<li><a href="#_technical_skills">technical skills</a></li>
+</ul></li>
+</ul></li>
+<li><a href="#_getting_the_gitolite_software">getting the gitolite software</a>
+<ul>
+<li><a href="#_getting_a_tar_file_from_a_clone">getting a tar file from a clone</a></li>
+</ul></li>
+<li><a href="#_installation_and_setup">installation and setup</a>
+<ul>
+<li><a href="#_install_methods_and_deciding_which_one_to_use">install methods and deciding which one to use</a></li>
+<li><a href="#_conventions_used">conventions used</a></li>
+<li><a href="#_package_method_directly_on_the_server_using_RPM_DEB">(package method) directly on the server, using RPM/DEB</a></li>
+<li><a href="#_root_method_directly_on_the_server_manually_with_root_access">(root method) directly on the server, manually, with root access</a></li>
+<li><a href="#_non_root_method_directly_on_the_server_manually_without_root_access">(non-root method) directly on the server, manually, without root access</a></li>
+<li><a href="#_from_client_method_install_from_the_client_to_the_server">(from-client method) install from the client to the server</a></li>
+</ul></li>
+<li><a href="#_URLs_for_gitolite_managed_repos">URLs for gitolite-managed repos</a></li>
+<li><a href="#_special_cases_multiple_gitolite_servers">special cases -- multiple gitolite servers</a>
+<ul>
+<li><a href="#_package_method_and_root_method">package method and root method</a></li>
+<li><a href="#_from_client_method">from-client method</a></li>
+</ul></li>
+<li><a href="#_upgrading">upgrading</a></li>
+<li><a href="#_uninstalling">uninstalling</a>
+<ul>
+<li><a href="#_cleaning_out_a_botched_install">cleaning out a botched install</a></li>
+<li><a href="#_uninstalling_gitolite_completely">uninstalling gitolite completely</a></li>
+</ul></li>
+</ul>
+
+<hr />
+
+<p><a name="_please_read_this_first"></a></p>
+
+<h3>please read this first</h3>
+
+<p><a name="_important_notes"></a></p>
+
+<h4>important notes</h4>
+
+<p>Please make sure you understand the following points first.</p>
+
+<ul>
+<li><p>gitolite runs as a single user on a server, and is invoked via ssh.  Thus,
+every user on the server is a potential "gitolite host".</p></li>
+<li><p>gitolite depends <strong>heavily</strong> on ssh pubkey (passwordless) access.  Do not
+assume you know all about ssh -- most people <strong>don't</strong>.  If in doubt, use
+a dedicated userid on both client and server for installation and
+administration of gitolite.</p>
+
+<p>To make matters worse, ssh problems in gitolite don't always look like ssh
+problems.  See <a href="http://sitaramc.github.com/gitolite/doc/ssh-troubleshooting.html">doc/ssh-troubleshooting.mkd</a> for help.</p></li>
+<li><p>gitolite <strong>does NOT</strong> like it when people with shell access to the server
+fiddle with files and directories it controls.</p>
+
+<p>Apparently this was not obvious to some people.</p></li>
+</ul>
+
+<p>A gitolite setup has:</p>
+
+<ul>
+<li>a server</li>
+<li>a "hosting user" on the server -- the userid under which gitolite runs.
+(Side note: there is <em>usually</em> only one hosting user per server (machine),
+but gitolite makes it trivial to have as many as you want.  Advanced users
+can look <a href="http://sitaramc.github.com/gitolite/doc/1-INSTALL.html#_special_cases_multiple_gitolite_servers">here</a>!)</li>
+<li>an "admin user" -- the user who sets up gitolite and configures it</li>
+<li>the admin user's client or workstation, from which he does all his work</li>
+</ul>
+
+<p>It is possible to have the server and the client be the same machine, and even
+the admin user be also the hosting user, (i.e., <code>sitaram@server</code> can install
+and administer a gitolite setup running under <code>sitaram@server</code>, a situation
+that is common with some hosting services).  It's actually fairly easy and
+<strong>safe</strong> to do, <strong>as long as you have password access to the server</strong> for
+emergency use.  However, I will not be documenting it because (a) if you know
+ssh you'll know how to extrapolate my instructions to do this and (b) if you
+don't know ssh it'll be a nightmare to support you.</p>
+
+<p><a name="_requirements"></a></p>
+
+<h4>requirements</h4>
+
+<p><a name="_client_workstation"></a></p>
+
+<h5>client/workstation</h5>
+
+<ul>
+<li>git version 1.6.2 or greater
+<ul>
+<li>even msysgit on Windows is fine; please don't ask me for help if
+you're using putty, plink, puttygen, etc., for ssh; I recommend
+msysgit for Windows and the openssh that comes with it</li>
+</ul></li>
+<li>if you're using the "from-client" method of install (see below), the bash
+shell is needed
+<ul>
+<li>again, msysgit on Windows is fine</li>
+</ul></li>
+</ul>
+
+<p><a name="_server"></a></p>
+
+<h5>server</h5>
+
+<ul>
+<li>any Unix system with a posix compatible "sh".
+<ul>
+<li>people using "csh" or derivatives please don't ask me for help -- tell
+your admin csh is not posix compatible</li>
+</ul></li>
+<li>git version 1.6.2 or greater
+<ul>
+<li>can be in a non-PATH location if you are unable to install it
+normally; see the <code>$GIT_PATH</code> variable in the "rc" file</li>
+</ul></li>
+<li>perl (but since git requires it anyway, you probably have it)</li>
+<li>openssh or any ssh that can understand the <code>authorized_keys</code> file format</li>
+</ul>
+
+<p><a name="_technical_skills"></a></p>
+
+<h5>technical skills</h5>
+
+<ul>
+<li><p>if you're installing gitolite, you're a "system admin", like it or not.
+Ssh is therefore a necessary skill.  Please take the time to learn at
+least enough to get passwordless access working.</p></li>
+<li><p>you also need to be somewhat familiar with git itself.  You cannot
+administer a whole bunch of git repositories if you don't know the basics
+of git.</p></li>
+<li><p>some familiarity with Unix and shells is probably required</p></li>
+<li><p>regular expressions are a big part of gitolite in many places but
+familiarity is not necessary to do basic access control.</p></li>
+</ul>
+
+<p><a name="_getting_the_gitolite_software"></a></p>
+
+<h3>getting the gitolite software</h3>
+
+<p>You can get the latest version of gitolite from github or indefero using the
+'git clone' command:</p>
+
+<pre><code>git clone git://github.com/sitaramc/gitolite.git
+        # (OR)
+git clone git://sitaramc.indefero.net/sitaramc/gitolite.git
+</code></pre>
+
+<p><a name="_getting_a_tar_file_from_a_clone"></a></p>
+
+<h4>getting a tar file from a clone</h4>
+
+<p>If you are on an internal network and cannot clone the gitolite repo, you can
+do the clone on some other machine and create a tar file from it to use on the
+internal network.  Here's how:</p>
+
+<pre><code>git clone git://github.com/sitaramc/gitolite.git
+        # (OR)
+git clone git://sitaramc.indefero.net/sitaramc/gitolite.git
+cd gitolite
+make master.tar
+# or maybe "make pu.tar"
+</code></pre>
+
+<p>Please use the make command as shown, not a plain "git archive", because the
+Makefile adds a file called <code>.GITOLITE-VERSION</code> that will help you identify
+which version you are using.</p>
+
+<p><a name="_installation_and_setup"></a></p>
+
+<h3>installation and setup</h3>
+
+<p><a name="methods"></a></p>
+
+<p><a name="_install_methods_and_deciding_which_one_to_use"></a></p>
+
+<h4>install methods and deciding which one to use</h4>
+
+<p>Gitolite has 4 install methods:</p>
+
+<ul>
+<li><strong>package method</strong> if you have a gitolite RPM or a DEB available</li>
+<li><strong>root method</strong> if you have root access to the server, and you plan to
+have multiple "hosting users" on it</li>
+<li><strong>non-root method</strong> if you don't have root access to the server, but you
+do have at least one account with a password</li>
+<li><strong>from-client method</strong> if you are not comfortable with public keys and
+server side commands</li>
+</ul>
+
+<p>Here's how you install using these 3 methods.  Future upgrades are equally
+easy -- the steps required for upgrading are marked "(U)".</p>
+
+<p><a name="_conventions_used"></a></p>
+
+<h4>conventions used</h4>
+
+<p>Throughout the documentation, we use "YourName" as the admin user, and his
+workstation is called "client".  The hosting user is "git", and the server is
+called "server".  <strong>Please substitute your values as needed</strong>.</p>
+
+<p><strong>If you're using DEB or RPM</strong>, the installer creates a user called
+"gitolite", so substitute that for "git" anywhere in the docs where the
+"hosting user" is mentioned as "git".</p>
+
+<p>Also, we often say "the rc file".  This means <code>~/.gitolite.rc</code> on the server.
+And when we say the "access control rules", or "conf file", or "config file",
+we mean <code>conf/gitolite.conf</code> on your gitolite-admin clone.</p>
+
+<p><a name="_package_method_directly_on_the_server_using_RPM_DEB"></a></p>
+
+<h4>(package method) directly on the server, using RPM/DEB</h4>
+
+<ul>
+<li><p>from your workstation, copy your <code>~/.ssh/id_rsa.pub</code> file to the server.
+Put it in <code>/tmp/YourName.pub</code>.</p></li>
+<li><p>(U) on the server, as root, do the install (urpmi, yum, apt-get, etc.).</p></li>
+<li><p>on the server, "su - gitolite", then as "gitolite" user, run <code>gl-setup
+/tmp/YourName.pub</code>.</p></li>
+<li><p>on the client, run <code>cd; git clone gitolite@server:gitolite-admin</code></p></li>
+</ul>
+
+<p><a name="_root_method_directly_on_the_server_manually_with_root_access"></a></p>
+
+<h4>(root method) directly on the server, manually, with root access</h4>
+
+<ul>
+<li><p>from your workstation, copy your <code>~/.ssh/id_rsa.pub</code> file to the server.
+Put it in <code>/tmp/YourName.pub</code>.</p></li>
+<li><p>(U) on the server, as root, do the following:</p>
+
+<pre><code>cd $HOME
+git clone git://github.com/sitaramc/gitolite gitolite-source
+cd gitolite-source
+# now checkout whatever branch you want; for early adopters I suggest
+# "pu", as in "git checkout -t origin/pu" for recent gits
+mkdir -p /usr/local/share/gitolite/conf /usr/local/share/gitolite/hooks
+src/gl-system-install /usr/local/bin /usr/local/share/gitolite/conf /usr/local/share/gitolite/hooks
+</code></pre></li>
+<li><p>on the server, "su - git", then as "git" user, run <code>which gl-setup</code>.  This
+should respond with <code>/usr/local/bin/gl-setup</code>.  If this is not what you
+get, you have some <code>$PATH</code> issues.  Make sure <code>/usr/local/bin</code> is in the
+<code>$PATH</code> for the git user, and that no prior components of the path contain
+another copy of <code>gl-setup</code>.  You <em>must</em> run the one in the directory that
+is the first argument of <code>gl-system-install</code> above.</p></li>
+<li><p>now run <code>gl-setup /tmp/YourName.pub</code>.</p></li>
+<li><p>on the client, run <code>cd; git clone git@server:gitolite-admin</code></p></li>
+</ul>
+
+<p><a name="_non_root_method_directly_on_the_server_manually_without_root_access"></a></p>
+
+<h4>(non-root method) directly on the server, manually, without root access</h4>
+
+<p><strong>WARNING: if you want to use this method your shell access to the git account
+on the server should be via <code>su - git</code> from some other userid.  If that is not
+possible, you should (a) know the password in case you screw up the keys AND
+(b) know how to force ssh to ask for a password if required, AND (c) know how
+to handle multiple keys in ssh.</strong></p>
+
+<ul>
+<li><p>from your workstation, copy your <code>~/.ssh/id_rsa.pub</code> file to the server.
+Put it in <code>/tmp/YourName.pub</code>.</p></li>
+<li><p>if <code>$HOME/bin</code> is not on the default PATH, fiddle with your <code>.bashrc</code> or
+<code>.bash_profile</code> or similar files and add it somehow.</p></li>
+<li><p>(U) on the server, as "git", do the following:</p>
+
+<pre><code>cd $HOME
+git clone git://github.com/sitaramc/gitolite gitolite-source
+# now checkout whatever branch you want; for early adopters I suggest
+# "pu", as in "git checkout -t origin/pu" for recent gits
+cd gitolite-source
+mkdir -p $HOME/bin $HOME/share/gitolite/conf $HOME/share/gitolite/hooks
+src/gl-system-install $HOME/bin $HOME/share/gitolite/conf $HOME/share/gitolite/hooks
+</code></pre></li>
+<li><p>on the server, still as "git", run <code>gl-setup /tmp/YourName.pub</code>.</p></li>
+<li><p>on the client, run <code>cd; git clone git@server:gitolite-admin</code></p></li>
+</ul>
+
+<p><a name="fc"></a></p>
+
+<p><a name="_from_client_method_install_from_the_client_to_the_server"></a></p>
+
+<h4>(from-client method) install from the client to the server</h4>
+
+<p>The advantage of this method is that it forces you to solve the ssh pubkey
+problem <strong>before</strong> attempting to install.  It works best if you have dedicated
+userids, one on the server for installing gitolite, and one on the client for
+administering it.</p>
+
+<p>The disadvantage is that the admin user ends up with <a href="http://sitaramc.github.com/gitolite/doc/ssh-troubleshooting.html#twokeys">two keys</a> --
+one for shell access (that he started with) and one for gitolite access (which
+the script creates if needed).</p>
+
+<p>This in turn forces the admin to use a different URL to access gitolite repos
+than normal users, which seems to confuse a heck of a lot of people who don't
+read the prominently displayed messages and/or the documentation.</p>
+
+<p>This method is verbosely documented in this <a href="http://sitaramc.github.com/gitolite/doc/install-transcript.html">transcript</a>, including
+<em>outputs</em> of the commands concerned.</p>
+
+<p><a name="_URLs_for_gitolite_managed_repos"></a></p>
+
+<h3>URLs for gitolite-managed repos</h3>
+
+<p>The URL for normal users (i.e., users other than the admin) is always of the
+form "git@server:reponame".  So, for instance, <code>git clone git@server:testing</code>
+gets any valid user a copy of the "testing" repo.</p>
+
+<p>In the first 3 install methods, the admin user will also use the same URL
+format, like <code>git clone git@server:gitolite-admin</code>.</p>
+
+<p>However, in the fourth ("from-client") method, the admin user needs a
+different URL (<code>gitolite:reponame</code>) to gain access to the gitolite
+repositories.  Check <a href="http://sitaramc.github.com/gitolite/doc/ssh-troubleshooting.html#twokeys">here</a> for why.</p>
+
+<p><a name="_special_cases_multiple_gitolite_servers"></a></p>
+
+<h3>special cases -- multiple gitolite servers</h3>
+
+<p>(<strong>Advanced users only, please!</strong>)</p>
+
+<p>There is no gitolite "daemon"; it gets invoked via sshd which calls
+"gl-auth-command" via the "command=" option in the authkeys file (see
+<a href="http://sitaramc.github.com/gitolite/doc/gitolite-and-ssh.html">gitolite and ssh</a> for more).</p>
+
+<p>If you think about it, this means every real (unix) user on the system can
+host her own gitolite server!</p>
+
+<p>Of course, one doesn't normally do that in the interests of sanity, but let's
+say you want to create one gitolite instance for each department on some
+company-wide mega-server.</p>
+
+<p><a name="_package_method_and_root_method"></a></p>
+
+<h4>package method and root method</h4>
+
+<p>With the first two methods of installation, it's trivial to create multiple
+gitolite instances.  You can even do this without giving shell access to the
+admins.  Here's an example with just two "departments", and their admins Alice
+and Bob:</p>
+
+<ul>
+<li>create userids <code>webbrowser_repos</code> and <code>webserver_repos</code></li>
+<li>ask Alice and Bob for their pubkeys; copy them to the respective home
+directories for convenience</li>
+<li>run <code>su - webbrowser_repos</code>, then <code>gl-setup alice.pub</code></li>
+<li>(similarly with <code>webserver_repos</code> and <code>bob.pub</code>, and so on for others)</li>
+</ul>
+
+<p>That's it.  The URL for all web browser projects is now something like
+<code>webbrowser_repos@server:reponame</code>, and similarly for the others.</p>
+
+<p>Notice that you only have to do this once for each "department", and it's
+really just one command after creating the userid.  None of these admins need
+to have a command line on the server, so don't give them the passwords if you
+don't need to -- the pubkey will allow them to be gitolite admins on their
+domain, and that's quite enough for normal operations.</p>
+
+<p><a name="_from_client_method"></a></p>
+
+<h4>from-client method</h4>
+
+<p>You can do the same thing using this method also, but it's a little more
+cumbersome.  Instead, I'll describe a different scenario -- one "admin"
+installing gitolite on different servers.  You can adapt that to the above
+case quite easily if you wish.</p>
+
+<p>Thanks to Matt Perzel, the easy-install command now takes an optional 4th
+parameter, which is the "nickname" of the gitolite server.  It gets defined in
+<code>~/.ssh/config</code>, and if not used it defaults to "gitolite".</p>
+
+<p>So if you used the following command to install gitolite to 2 different
+servers:</p>
+
+<pre><code>./src/gl-easy-install -q git my.1st.git.server admin_user1 gitolite_server_1
+./src/gl-easy-install -q git my.2nd.git.server admin_user1 gitolite_server_2
+</code></pre>
+
+<p>you will find that <code>~/gitolite_server_1-admin</code> and <code>~/gitolite_server_2-admin</code>
+have been created as respective clones.  Or you can re-clone elsewhere:</p>
+
+<pre><code>cd ~/admin1; git clone gitolite_server_1:gitolite-admin.git
+cd ~/admin2; git clone gitolite_server_2:gitolite-admin.git
+</code></pre>
+
+<p><a name="_upgrading"></a></p>
+
+<h3>upgrading</h3>
+
+<p>Upgrading gitolite is easy.  In each method above, just re-do the step that is
+marked "(U)".  Also, if you're using either of the two methods that use the
+<code>src/gl-system-install</code> command, please make sure you give it the same
+arguments!</p>
+
+<p>If you've added any new hooks, please also run the next step (<code>gl-setup</code>)
+also.</p>
+
+<p>Also, remember that some new features may require additional settings in your
+<code>~/.gitolite.rc</code> file.</p>
+
+<p><a name="_uninstalling"></a></p>
+
+<h3>uninstalling</h3>
+
+<p><a name="_cleaning_out_a_botched_install"></a></p>
+
+<h4>cleaning out a botched install</h4>
+
+<p>When people have trouble installing gitolite, they often try to change a bunch
+of things manually on the server.  This usually makes things worse ;-) so
+here's how to clean the slate.</p>
+
+<ul>
+<li>client-side
+<ul>
+<li>edit <code>~/.ssh/config</code> and delete the paragraph starting with <code>host
+gitolite</code>, if present.</li>
+<li>remove <code>~/gitolite-admin</code></li>
+</ul></li>
+<li>server-side
+<ul>
+<li>edit <code>~/.ssh/authorized_keys</code> and delete all lines between <code># gitolite
+start</code> and <code># gitolite end</code> inclusive.</li>
+<li>remove <code>~/.gitolite</code>, <code>~/.gitolite.rc</code> and
+<code>~/repositories/gitolite-admin.git</code></li>
+</ul></li>
+</ul>
+
+<p><a name="_uninstalling_gitolite_completely"></a></p>
+
+<h4>uninstalling gitolite completely</h4>
+
+<p>There's some duplication between this and the previous section, but
+uninstalling gitolite is described in great detail in
+<a href="http://sitaramc.github.com/gitolite/doc/uninstall.html">doc/uninstall.mkd</a></p>
+
+<hr />

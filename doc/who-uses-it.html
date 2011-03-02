@@ -1,0 +1,58 @@
+<p><head><style>
+    body        { margin-left:  40px;   font-size:  0.9em;  font-family: sans-serif; max-width: 800px; }
+    h1          { margin-left: -30px;   border-bottom: 5px  solid #ccc; }
+    h2, h3      { margin-left: -30px;   border-top:    3px  solid #ddd; }
+    h4, h5      { margin-left: -20px; }
+    code        { font-size:    1.1em;  background:  #eee; }
+    pre         { margin-left:  2em;    background:  #eee; }
+    pre code    { font-size:    1.1em;  background:  #eee; }
+</style></head></p>
+
+<h1>who uses gitolite</h1>
+
+<blockquote>
+  <blockquote>
+  <p>If you're using gitolite and find it very useful in some way, I would
+  love to describe your use of it or add a link to your own description
+  of it here.  Of course, you can anonymise it as much as you need to.</p>
+</blockquote>
+
+<p></blockquote></p>
+
+<p>The <strong>Fedora Project</strong> controls access to over 10,000 package management
+repositories accessed by over 1,000 package maintainers <a href="http://lists.fedoraproject.org/pipermail/devel-announce/2010-July/000647.html">using
+gitolite</a>.  This is probably the largest <em>confirmed</em> gitolite
+installation anywhere.  The whole <a href="http://sitaramc.github.com/gitolite/doc/big-config.html">big-config</a> thing was initially done
+for them (their config file was so big that without the big-config changes
+gitolite would just run out of memory and die!).</p>
+
+<p>The <strong>KDE project</strong> is currently <a href="http://www.omat.nl/2010/07/07/move-to-git-the-progress-so-far/">testing</a> gitolite to see if it will
+suit their needs (in combination with redmine for issue tracking and
+reviewboard for code review), after an initial <a href="http://permalink.gmane.org/gmane.comp.kde.scm-interest/1437">review of alternatives</a>
+by a core group.  Apart from the usual access control, the KDE folks will be
+using many of the "ad hoc repo creation" features enabled by wildrepos and the
+accompanying commands.  Some of the changes to the "admin defined commands"
+were inspired by KDE's needs.</p>
+
+<p><strong>Prof. Hiren Patel</strong> of the University of Waterloo is responsible for the
+existence of the fairly popular "<a href="http://sitaramc.github.com/gitolite/doc/wildcard-repositories.html">wildrepos</a>" feature.  The
+documentation was pretty much written with his use case in mind, but of course
+it turns out to be useful for a lot of people.</p>
+
+<p>In fact, he surprised the heck out of me recently by saying that if it hadn't
+been for this feature, he might not have used git itself -- which is a pretty
+serious compliment if you think about the magnitude of the git project and my
+little one-man show!</p>
+
+<p>He explains his use of it <a href="http://ece.uwaterloo.ca/~hdpatel/uwhtml/?p=470">here</a>.</p>
+
+<p><strong>Gentoo Linux</strong> has <a href="http://archives.gentoo.org/gentoo-dev/msg_2812c9b9e768f64b46360ab17b9d0024.xml">just moved</a> their git repositories from gitosis
+to gitolite. There are about 200 repositories, some of them are the so called
+<a href="http://www.gentoo.org/proj/en/overlays/">overlays</a>, official and unofficial/user overlays, plus several
+developer and project repositories, used by more than 1000 people. That number
+will be increased in the near future, as they are going to migrate some of
+their CVS/SVN repositories there, plus they are offering overlays hosting for
+users as well.</p>
+
+<p><strong>Nokia MeeGo</strong> uses Gitolite internally, and has also contributed LDAP
+specific code (see <a href="http://github.com/sitaramc/gitolite/blob/pu/contrib/ldap">contrib/ldap</a> directory for details).</p>
