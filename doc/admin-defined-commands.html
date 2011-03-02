@@ -23,7 +23,10 @@ hear me laughing, but you'll feel it in your bones, trust me!</strong></p>
 
 <ul>
 <li><a href="#_background">background</a></li>
-<li><a href="#_setting_it_up">setting it up</a></li>
+<li><a href="#_setting_it_up">setting it up</a>
+<ul>
+<li><a href="#_configuring_ADCs">configuring ADCs</a></li>
+</ul></li>
 <li><a href="#_anatomy_of_a_command">anatomy of a command</a></li>
 <li><a href="#_example_uses_and_sample_commands_in_contrib">example uses and sample commands in contrib</a>
 <ul>
@@ -91,6 +94,14 @@ to inadvertently <em>hide</em> some of the "official" commands (like "info",
 "expand", "setperms", etc., or worse, say "git-upload-pack"!) by creating
 executable files with those names in this directory.  So don't do that -- you
 have been warned!</strong></p>
+
+<p><a name="_configuring_ADCs"></a></p>
+
+<h4>configuring ADCs</h4>
+
+<p>I didn't want to put configuration variables for ADCs also into the main 'rc'
+file, so I chose to put them in the <code>adc.common-functions</code> file instead.  Take
+a look at it sometime.</p>
 
 <p><a name="_anatomy_of_a_command"></a></p>
 

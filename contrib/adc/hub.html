@@ -10,6 +10,24 @@
 
 <h1>the 'hub' ADC</h1>
 
+<p>In this document:</p>
+
+<ul>
+<li><a href="#_a_home_grown_hub_for_git_repos">a home grown 'hub' for git repos</a></li>
+<li><a href="#_general_syntax">general syntax</a>
+<ul>
+<li><a href="#_Bob_s_commands">Bob's commands</a></li>
+<li><a href="#_Alice_s_just_looking_commands">Alice's "just looking" commands</a></li>
+<li><a href="#_Alice_s_action_commands">Alice's "action" commands</a></li>
+</ul></li>
+<li><a href="#_what_next_">what next?</a></li>
+<li><a href="#_note_to_the_admin_configuration_variables">note to the admin: configuration variables</a></li>
+</ul>
+
+<p><a name="_a_home_grown_hub_for_git_repos"></a></p>
+
+<h3>a home grown 'hub' for git repos</h3>
+
 <p>This ADC (admin-defined command) helps collaboration among repos.  The name is
 in honor of github, which is the primary host for gitolite itself.</p>
 
@@ -30,9 +48,11 @@ starts with an email from Bob to Alice, followed by Alice running a <code>git fe
 long term use).  Until this happens she can't see much detail about the
 commits to be pulled.</p>
 
-<p>What this ADC does is (a) collect all the pull requests she needs to look at
-in one place, and (b) allow her to examine the changes with any combination of
-<code>git log</code> and <code>git diff</code> options <em>without having to fetch the content first</em>.</p>
+<p><strong>What this ADC does</strong> is (a) collect all the pull requests she needs to look
+at in one place, and (b) allow her to examine the changes with any combination
+of <code>git log</code> and <code>git diff</code> options <em>without having to fetch the content
+first</em>, and (c) act as a trusted intermediary to allow Alice to fetch <em>just
+one branch</em> from Bob even if she does not have any access to Bob's repository!</p>
 
 <p>In a situation where there may be lots of requests, being able to take a quick
 look at them (and possibly reject some), without having to pull down anything
@@ -45,12 +65,18 @@ do a normal <code>git fetch [origin]</code> to get it to her workstation.  This 
 added advantage that other people, who may be watching her repo but not Bob's,
 now get to see what Bob sent her and send comments etc.</p>
 
-<hr />
+<p><a name="_general_syntax"></a></p>
+
+<h3>general syntax</h3>
 
 <p>The general syntax is</p>
 
 <pre><code>ssh git@server hub &lt;hub-command&gt; &lt;args&gt;
 </code></pre>
+
+<p><a name="_Bob_s_commands"></a></p>
+
+<h4>Bob's commands</h4>
 
 <p>The following commands do not cause a fetch, and should be quite fast:</p>
 
@@ -76,6 +102,13 @@ made from his repo child to repo parent.  (Note we don't say "accepted" but
 
 <p>The second argument is optional the same way as the 3rd argument in the
 previous command.</p></li>
+</ul>
+
+<p><a name="_Alice_s_just_looking_commands"></a></p>
+
+<h4>Alice's "just looking" commands</h4>
+
+<ul>
 <li><p>Alice lists requests waiting for her to check and possibly pull into
 parent.  For each waiting pull request, she will see a serial number, the
 originating repo name (child, in our example), the requestor (Bob, here),
@@ -108,7 +141,17 @@ best if you think of this as "view the commits from pull request #1 in
 <pre><code>view-diff parent 1 &lt;git diff options&gt;
 </code></pre>
 
-<p>Again, she mentions <em>her</em> reponame but the diff's come from <code>child</code>.</p></li>
+<p>Again, she mentions <em>her</em> reponame but the diff's come from <code>child</code>.  Also
+note that, due to restrictions on what characters are allowed in arguments
+to ADCs, you probably can't do things like <code>pu^</code> or <code>master~3</code>, and have
+to use SHAs instead.</p></li>
+</ul>
+
+<p><a name="_Alice_s_action_commands"></a></p>
+
+<h4>Alice's "action" commands</h4>
+
+<ul>
 <li><p>Alice doesn't like what she sees and decides to reject it.  This command
 expects some text on STDIN as the rejection message:</p>
 
@@ -137,6 +180,10 @@ tracking branch", just like <code>refs/remotes/origin/b1</code>.</p>
 </code></pre></li>
 </ul>
 
+<p><a name="_what_next_"></a></p>
+
+<h3>what next?</h3>
+
 <p>At this point, you're done with the <code>hub</code> ADC.  However, all this is on the
 bare <code>parent.git</code> on the server, and nothing has hit Alice's workstation yet!
 Alice will still have to run a fetch or a pull on her workstation if she wants
@@ -144,3 +191,21 @@ to check the code in detail, use a tool like gitk, and expecially to
 compile/test it.  <em>Then</em> she decides whether to accept or reject the request,
 which will have to be communicated via email, of course; see the second para
 of this document ;-)</p>
+
+<p>Finally, note that Alice does not actually need to use the <code>fetch</code> subcommand.
+She can do the traditional thing and fetch Bob's repo/branch directly to her
+<em>workstation</em>.  She may still want to run the fetch command though, because it
+helpfully prints the complete <code>git fetch</code> command she can paste into her
+shell.</p>
+
+<p><a name="_note_to_the_admin_configuration_variables"></a></p>
+
+<h3>note to the admin: configuration variables</h3>
+
+<p>There are 2 configuration variables.  <code>BASE_FETCH_URL</code> should be set to a
+simple "read" URL (so it doesn't even have to be ssh) that almost anyone using
+this server can use.  It's only used in producing a proper <code>git fetch</code> command
+mentioned just above.</p>
+
+<p><code>GL_FORKED_FROM</code> is set to <code>gl-forked-from</code> by default, but if your initials
+are <code>JM</code> you can set it to <code>kde-cloned-from</code> to save time and trouble ;-)</p>
