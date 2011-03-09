@@ -239,7 +239,7 @@ sub new_repo
     # wildcard create but on a normal (config file) create it will actually be
     # set to "gitolite-admin", so we need to make sure that for the duration
     # of the hook it is set correctly.
-    system("env GL_REPO='$repo' hooks/gl-post-init") if -x "hooks/gl-post-init";
+    system("env", "GL_REPO='$repo'", "hooks/gl-post-init") if -x "hooks/gl-post-init";
 }
 
 sub new_wild_repo {
@@ -260,9 +260,51 @@ sub new_wild_repo {
 sub echo_file {
     my ($text, $file) = @_;
 
-    open(my $GL_CREATOR, ">", $file) or die "Unable to open $file: $!\n";
-    print $GL_CREATOR $text;
-    close($GL_CREATOR) or die "Unable to close $file: $!\n";
+    open(my $fh, ">", $file) or die "Unable to open $file: $!\n";
+    print $fh $text;
+    close($fh) or die "Unable to close $file: $!\n";
+}
+
+# Like system("cat $foo > $bar"); but faster/safer/more portable
+# preserves permissions of destination
+# XXX like cat foo > bar, the destination may be left in an inconsistant state
+# by an ill-timed crash
+sub copy_into {
+    my ($src, $dst) = @_;
+
+    open(my $src_fh, "<", $src) or die "Unable to open $src: $!\n";
+    open(my $dst_fh, ">", $dst) or die "Unable to open $dst: $!\n";
+
+    # XXX This won't perform well on large binary files, if that's needed
+    # rewrite this with sysopen/sysread/syswrite
+    while (my $line = <$src_fh>) {
+        print $dst_fh $line;
+    }
+
+    close($src_fh) or "Unable to close $src: $!\n";
+    close($dst_fh) or "Unable to close $dst: $!\n";
+}
+
+sub print_file {
+    my ($file) = @_;
+
+   open(my $fh, "<", $file) or die "Unable to open $file: $!\n";
+   while (my $line = <$fh>) {
+       print $line;
+   }
+   close($fh) or die "Unable to close $file: $!\n";
+}
+
+# http://www.sysarch.com/Perl/slurp_article.html
+# return a scalar containing the contents of a file
+sub slurp {
+    my ($file) = @_;
+    
+    local($/); # Locally undefine the input record seperator
+    open(my $fh, "<", $file) or die "Unable to open $file: $!\n";
+    my $ret = <$fh>;
+    close($fh) or die "Unable to close $file: $!\n";
+    return $ret;
 }
 
 # ----------------------------------------------------------------------------
@@ -362,14 +404,14 @@ sub get_set_perms
     wrap_chdir("$repo.git");
     if ($verb eq 'getperms') {
         return unless -f "gl-perms";
-        my $perms = `cat gl-perms`;
+        my $perms = slurp("gl-perms");
         # convert R and RW to the actual category names in the config file
         $perms =~ s/^\s*R /READERS /mg;
         $perms =~ s/^\s*RW /WRITERS /mg;
         print $perms;
     } else {
-        system("cat > gl-perms");
-        my $perms = `cat gl-perms`;
+        truncate("gl-perms", 0);
+        my $perms = slurp("gl-perms");
         # convert R and RW to the actual category names in the config file
         $perms =~ s/^\s*R /READERS /mg;
         $perms =~ s/^\s*RW /WRITERS /mg;
@@ -398,11 +440,11 @@ sub get_set_desc
     wrap_chdir("$ENV{GL_REPO_BASE_ABS}");
     wrap_chdir("$repo.git");
     if ($verb eq 'getdesc') {
-        system("cat", "description") if -f "description";
+        print_file("description") if -f "description";
     } else {
-        system("cat > description");
+        truncate("description", 0);
         print "New description is:\n";
-        system("cat", "description");
+        print_file("description");
     }
 }
 
@@ -491,7 +533,7 @@ sub setup_gitweb_access
 sub report_version {
     my($user) = @_;
     print "hello $user, the gitolite version here is ";
-    system("cat", ($GL_PACKAGE_CONF || "$GL_ADMINDIR/conf") . "/VERSION");
+    print_file(($GL_PACKAGE_CONF || "$GL_ADMINDIR/conf") . "/VERSION");
 }
 
 sub perm_code {
@@ -997,11 +1039,11 @@ sub setup_authkeys
     print $newkeys_fh "# gitolite end\n";
     close $newkeys_fh or die "$ABRT close newkeys failed: $!\n";
 
-    # all done; overwrite the file (use cat to avoid perm changes)
-    system("cat $ENV{HOME}/.ssh/authorized_keys > $ENV{HOME}/.ssh/old_authkeys");
-    system("cat $ENV{HOME}/.ssh/new_authkeys > $ENV{HOME}/.ssh/authorized_keys")
-        and die "couldn't write authkeys file\n";
-    system("rm  $ENV{HOME}/.ssh/new_authkeys");
+    # all done; overwrite the file
+    copy_into("$ENV{HOME}/.ssh/authorized_keys", "$ENV{HOME}/.ssh/old_authkeys");
+    copy_into("$ENV{HOME}/.ssh/new_authkeys", "$ENV{HOME}/.ssh/authorized_keys");
+#        and die "couldn't write authkeys file\n";
+    unlink("$ENV{HOME}/.ssh/new_authkeys");
 }
 
 # ----------------------------------------------------------------------------
