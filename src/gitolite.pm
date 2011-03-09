@@ -225,7 +225,7 @@ sub new_repo
     wrap_chdir("$repo.git");
     system("git --bare init >&2");
     if ($creator) {
-        echo_file("$creator\n", "gl-creater");
+        wrap_print("gl-creater", "$creator\n");
         system("git", "config", "gitweb.owner", $creator);
     }
     # propagate our own, plus any local admin-defined, hooks
@@ -253,16 +253,6 @@ sub new_wild_repo {
     setup_daemon_access($repo);
     add_del_line ("$repo.git", $PROJECTS_LIST, setup_gitweb_access($repo, '', ''));
     wrap_chdir($ENV{HOME});
-}
-
-# Like system("echo $text > $file");
-# Except, safer and faster.
-sub echo_file {
-    my ($text, $file) = @_;
-
-    open(my $fh, ">", $file) or die "Unable to open $file: $!\n";
-    print $fh $text;
-    close($fh) or die "Unable to close $file: $!\n";
 }
 
 # Like system("cat $foo > $bar"); but faster/safer/more portable
@@ -410,7 +400,7 @@ sub get_set_perms
         $perms =~ s/^\s*RW /WRITERS /mg;
         print $perms;
     } else {
-        truncate("gl-perms", 0);
+        wrap_print("gl-perms", "");
         my $perms = slurp("gl-perms");
         # convert R and RW to the actual category names in the config file
         $perms =~ s/^\s*R /READERS /mg;
@@ -442,7 +432,7 @@ sub get_set_desc
     if ($verb eq 'getdesc') {
         print_file("description") if -f "description";
     } else {
-        truncate("description", 0);
+        wrap_print("description", "");
         print "New description is:\n";
         print_file("description");
     }
